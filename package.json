@@ -1,0 +1,25 @@
+{
+  "name": "crud-list-reducer",
+  "version": "1.0.0",
+  "description": "Managing API conn with list",
+  "main": "lib/crud-list-reducer.js",
+  "scripts": {
+    "test": "node sample/index.js",
+    "build": "cross-env BABEL_ENV=commonjs babel src --out-dir lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "crud-list-reducer"
+  },
+  "author": "Anjar Wicaksono",
+  "license": "MIT",
+  "dependencies": {
+    "redux-wrapper-extended": "1.0.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "babel-register": "^6.26.0"
+  }
+}
