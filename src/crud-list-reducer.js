@@ -1,6 +1,6 @@
 import {ReducerWrapper, dispatchAction} from 'redux-wrapper-extended';
 
-function finalizeWrapper(wrapper, prefix, identifyingFunc) {
+function finalizeWrapper(wrapper, prefix, plural, identifyingFunc) {
   wrapper
   .addHandler(prefix+'.startLoading', (s) => {
     return {
@@ -17,64 +17,66 @@ function finalizeWrapper(wrapper, prefix, identifyingFunc) {
   .addHandler(prefix+'.clear', (s) => {
     return {
       ...s,
-      itemDict: {},
+      localItemDict: {},
       syncedItemDict:{},
       toBeAddedList:[]
     }
   })
 
-  .addHandler(prefix+'.setItems', (s, items) => {
-    let itemDict = {...s.itemDict}
+  .addHandler(prefix+'.set' + plural, (s, items) => {
+    let localItemDict = {...s.localItemDict}
     items.forEach((item) => {
       let key = identifyingFunc(item)
-      itemDict[key] = item
+      localItemDict[key] = item
     })
     return {
       ...s,
-      itemDict
+      localItemDict
     }
   })
-  .addHandler(prefix+'.setSyncedItems', (s, items) => {
-    let itemDict = {...s.itemDict}
+  .addHandler(prefix+'.setSynced' + plural, (s, items) => {
+    let localItemDict = {...s.localItemDict}
     let syncedItemDict = {...s.syncedItemDict}
     items.forEach((item) => {
       let key = identifyingFunc(item)
-      itemDict[key] = item
+      localItemDict[key] = item
       syncedItemDict[key] = item
     })
     return {
       ...s,
-      itemDict,
+      localItemDict,
       syncedItemDict
     }
   })
   .addHandler(prefix+'.setSyncedByKeys', (s, newItemDict) => {
-    let itemDict = {...s.itemDict, ...newItemDict}
+    let localItemDict = {...s.localItemDict, ...newItemDict}
     let syncedItemDict = {...s.syncedItemDict, ...newItemDict}
     Object.keys(newItemDict).forEach((key)=>{
       if(newItemDict[key]==null){
-        delete itemDict[key]
+        delete localItemDict[key]
         delete syncedItemDict[key]
       }
     })
     return {
       ...s,
-      itemDict,
+      localItemDict,
       syncedItemDict
     }
   })
-  .addHandler(prefix+'.startAddingItems', (s, items) => {
+  .addHandler(prefix+'.startAdding' + plural, (s, items) => {
     let toBeAddedList = [...s.toBeAddedList, ...items]
     return {
       ...s,
       toBeAddedList
     }
   })
-  .addHandler(prefix+'.completeAddingItems', (s, items) => {
+  .addHandler(prefix+'.completeAdding' + plural, (s, items) => {
     let toBeAddedList = [...s.toBeAddedList]
     items.forEach((item) => {
       let index = toBeAddedList.indexOf(item)
-      toBeAddedList.splice(index, 1)
+      if(index >= 0 && index < toBeAddedList.length){
+        toBeAddedList.splice(index, 1)
+      }
     })
 
     return {
@@ -82,23 +84,23 @@ function finalizeWrapper(wrapper, prefix, identifyingFunc) {
       toBeAddedList
     }
   })
-  .addHandler(prefix+'.modifyItems', (s, items) => {
-    let itemDict = {...s.itemDict}
+  .addHandler(prefix+'.modify' + plural, (s, items) => {
+    let localItemDict = {...s.localItemDict}
     items.forEach((item) => {
       let key = identifyingFunc(item)
-      itemDict[key] = item
+      localItemDict[key] = item
     })
     return {
       ...s,
-      itemDict
+      localItemDict
     }
   })
-  .addHandler(prefix+'.completeUpdatingItems', (s, items) => {
-    let itemDict = {...s.itemDict}
+  .addHandler(prefix+'.completeUpdating' + plural, (s, items) => {
+    let localItemDict = {...s.localItemDict}
     let syncedItemDict = {...s.syncedItemDict}
     items.forEach((item) => {
       let key = identifyingFunc(item)
-      itemDict[key] = item
+      localItemDict[key] = item
       syncedItemDict[key] = item
     })
     return {
@@ -106,28 +108,28 @@ function finalizeWrapper(wrapper, prefix, identifyingFunc) {
       syncedItemDict
     }
   })
-  .addHandler(prefix+'.startDeletingItems', (s, items) => {
-    let itemDict = {...s.itemDict}
+  .addHandler(prefix+'.startRemoving' + plural, (s, items) => {
+    let localItemDict = {...s.localItemDict}
     items.forEach((item) => {
       let key = identifyingFunc(item)
-      delete itemDict[key]
+      delete localItemDict[key]
     })
     return {
       ...s,
-      itemDict
+      localItemDict
     }
   })
-  .addHandler(prefix+'.finishDeletingItems', (s, items) => {
-    let itemDict = {...s.itemDict}
+  .addHandler(prefix+'.finishRemoving' + plural, (s, items) => {
+    let localItemDict = {...s.localItemDict}
     let syncedItemDict = {...s.syncedItemDict}
     items.forEach((item) => {
       let key = identifyingFunc(item)
-      delete itemDict[key]
+      delete localItemDict[key]
       delete syncedItemDict[key]
     })
     return {
       ...s,
-      itemDict,
+      localItemDict,
       syncedItemDict
     }
   })
@@ -135,21 +137,48 @@ function finalizeWrapper(wrapper, prefix, identifyingFunc) {
 
 const Reduce = function (config){
   let {prefix, singular, plural} = config
-  let reducerWrapper = ReducerWrapper({
-    itemDict: {},
+
+  var initialState = {
+    localItemDict: {},
     syncedItemDict:{},
     toBeAddedList:[],
     isLoading: false
-  })
+  }
+
+  let reducerWrapper = new ReducerWrapper(initialState)
   let actionDict = {}
   
   let obj = {
     identifiedBy(identifyingFunc) {
-      finalizeWrapper(reducerWrapper, prefix, identifyingFunc)
+      finalizeWrapper(reducerWrapper, prefix, plural, identifyingFunc)
       return obj
     },
     generate() {
+      obj.onPopulatingItemsLocally()
+      obj.onSettingItemLocally()
+      obj.onSettingItemsLocally()
+      obj.onModifyingItemLocally()
+      obj.onModifyingItemsLocally()
+      obj.onRemovingItemLocally()
+      obj.onRemovingItemsLocally()
       return {
+        initialState,
+        getLocalList: (state) => {
+          var list = Object.keys(state.localItemDict).map((key) => state.localItemDict[key])
+          list.concat(state.toBeAddedList)
+          return list
+        },
+        getSyncedList: (state) => {
+          return Object.keys(state.syncedItemDict).map((key) => state.syncedItemDict[key])
+        },
+        isLoading: (state) => state.isLoading,
+        getComputedValues: function (state) {
+          return {
+            localList: this.getLocalList(state),
+            syncedList: this.getSyncedList(state),
+            isLoading: this.isLoading(state),
+          }
+        },
         reducer: reducerWrapper.getReducer(),
         generateActions: (dispatch) => {
           let returnedActions = {}
@@ -160,25 +189,42 @@ const Reduce = function (config){
         }
       }
     },
-    onPopulatingItems () {
-      actionDict['set'+plural] = (dispatch) => {
+    onSettingItemLocally () {
+      actionDict['set'+singular+'Locally'] = (dispatch) => {
+        return (item) => {
+          dispatchAction(dispatch, prefix+'.set' + plural, [item])     
+        } 
+      }
+      return obj            
+    },
+    
+    onSettingItemsLocally () {
+      actionDict['set'+plural+'Locally'] = (dispatch) => {
+        return (items) => {
+          dispatchAction(dispatch, prefix+'.set' + plural, items)     
+        } 
+      }
+      return obj            
+    },
+    
+    onPopulatingItemsLocally () {
+      actionDict['populate'+plural+'Locally'] = (dispatch) => {
         return (items) => {
           dispatchAction(dispatch, prefix+'.clear')     
-          dispatchAction(dispatch, prefix+'.setItems', items)     
+          dispatchAction(dispatch, prefix+'.set' + plural, items)     
         } 
       }
       return obj            
     },
     onPopulatingSyncedItems (asyncFunc) {
-      actionDict['set'+plural] = (dispatch) => {
+      actionDict['populate'+plural] = (dispatch) => {
         return async (params) => {
           dispatchAction(dispatch, prefix+'.startLoading')
           try{
             let items = await asyncFunc(params)
             dispatchAction(dispatch, prefix+'.clear')     
-            dispatchAction(dispatch, prefix+'.setSyncedItems', items)     
+            dispatchAction(dispatch, prefix+'.setSynced' + plural, items)     
           }catch (e){
-            
           }
           dispatchAction(dispatch, prefix+'.stopLoading')
         } 
@@ -191,8 +237,8 @@ const Reduce = function (config){
         return async (params) => {
           dispatchAction(dispatch, prefix+'.startLoading')
           try{
-            let itemDict = await asyncFunc(params)
-            dispatchAction(dispatch, prefix+'.setSyncedByKeys', itemDict)     
+            let localItemDict = await asyncFunc(params)
+            dispatchAction(dispatch, prefix+'.setSyncedByKeys', localItemDict)     
           }catch (e){
             
           }
@@ -202,16 +248,15 @@ const Reduce = function (config){
       return obj            
     },
 
-
     onAddingItem (asyncFunc){
-      actionDict['get'+singular] = (dispatch) => {
+      actionDict['add'+singular] = (dispatch) => {
         return async (toBeAddedItem) => {
           dispatchAction(dispatch, prefix+'.startLoading')
-          dispatchAction(dispatch, prefix+'.startAddingItems', [toBeAddedItem])
+          dispatchAction(dispatch, prefix+'.startAdding' + plural, [toBeAddedItem])
           try{
             let addedItem = await asyncFunc(toBeAddedItem)
-            dispatchAction(dispatch, prefix+'.completeAddingItems', [toBeAddedItem])     
-            dispatchAction(dispatch, prefix+'.setSyncedItems', [addedItem])     
+            dispatchAction(dispatch, prefix+'.completeAdding' + plural, [toBeAddedItem])     
+            dispatchAction(dispatch, prefix+'.setSynced' + plural, [addedItem])     
           }catch (e){
             
           }
@@ -222,14 +267,14 @@ const Reduce = function (config){
     },  
     
     onAddingItems (asyncFunc){
-      actionDict['get'+plural] = (dispatch) => {
+      actionDict['add'+plural] = (dispatch) => {
         return async (toBeAddedItems) => {
           dispatchAction(dispatch, prefix+'.startLoading')
-          dispatchAction(dispatch, prefix+'.startAddingItems', toBeAddedItems)
+          dispatchAction(dispatch, prefix+'.startAdding' + plural, toBeAddedItems)
           try{
             let addedItems = await asyncFunc(toBeAddedItems)
-            dispatchAction(dispatch, prefix+'.completeAddingItems', toBeAddedItems)     
-            dispatchAction(dispatch, prefix+'.setSyncedItems', addedItems)     
+            dispatchAction(dispatch, prefix+'.completeAdding' + plural, toBeAddedItems)     
+            dispatchAction(dispatch, prefix+'.setSynced' + plural, addedItems)     
           }catch (e){
             
           }
@@ -238,32 +283,34 @@ const Reduce = function (config){
       }
       return obj
     },
-    onModifyingItem (asyncFunc){
-      actionDict['modify'+singular] = (dispatch) => {
+
+
+    onModifyingItemLocally (){
+      actionDict['modify'+singular+'Locally'] = (dispatch) => {
         return (item) => {
-          dispatchAction(dispatch, prefix+'.setItems', [item])
+          dispatchAction(dispatch, prefix+'.set' + plural, [item])
         }         
       }
       return obj
     },
 
-    onModifyingItems (asyncFunc){
-      actionDict['modify'+plural] = (dispatch) => {
+    onModifyingItemsLocally (){
+      actionDict['modify'+plural+'Locally'] = (dispatch) => {
         return (items) => {
-          dispatchAction(dispatch, prefix+'.setItems', items)
+          dispatchAction(dispatch, prefix+'.set' + plural, items)
         }         
       }
       return obj
     },
 
     onUpdatingItem (asyncFunc){
-      actionDict['modify'+plural] = (dispatch) => {
-        return (toBeUpdatedItem) => {
+      actionDict['update'+plural] = (dispatch) => {
+        return async (toBeUpdatedItem) => {
           dispatchAction(dispatch, prefix+'.startLoading')
-          dispatchAction(dispatch, prefix+'.setItems', [toBeUpdatedItem])
+          dispatchAction(dispatch, prefix+'.set' + plural, [toBeUpdatedItem])
           try{
             let updatedItem = await asyncFunc(toBeUpdatedItem)
-            dispatchAction(dispatch, prefix+'.setSyncedItems', [updatedItem])     
+            dispatchAction(dispatch, prefix+'.setSynced' + plural, [updatedItem])     
           }catch (e){
             
           }
@@ -274,29 +321,13 @@ const Reduce = function (config){
     },
 
     onUpdatingItems (asyncFunc){
-      actionDict['modify'+plural] = (dispatch) => {
-        return (toBeUpdatedItems) => {
+      actionDict['update'+plural] = (dispatch) => {
+        return async (toBeUpdatedItems) => {
           dispatchAction(dispatch, prefix+'.startLoading')
-          dispatchAction(dispatch, prefix+'.setItems', toBeUpdatedItems)
+          dispatchAction(dispatch, prefix+'.set' + plural, toBeUpdatedItems)
           try{
             let updatedItems = await asyncFunc(toBeUpdatedItems)
-            dispatchAction(dispatch, prefix+'.setSyncedItems', updatedItems)     
-          }catch (e){
-            
-          }
-          dispatchAction(dispatch, prefix+'.stopLoading')
-        }         
-      }
-      return obj
-    },
-    onDeletingItem (asyncFunc){
-      actionDict['modify'+plural] = (dispatch) => {
-        return (toBeDeletedItem) => {
-          dispatchAction(dispatch, prefix+'.startLoading')
-          dispatchAction(dispatch, prefix+'.startDeletingItems', [toBeDeletedItem])
-          try{
-            let deletedItem = await asyncFunc(toBeDeletedItem)
-            dispatchAction(dispatch, prefix+'.finishDeletingItems', [deletedItem])     
+            dispatchAction(dispatch, prefix+'.setSynced' + plural, updatedItems)     
           }catch (e){
             
           }
@@ -306,14 +337,48 @@ const Reduce = function (config){
       return obj
     },
 
-    onDeletingItems (asyncFunc){
-      actionDict['modify'+plural] = (dispatch) => {
-        return (toBeDeletedItems) => {
+    onRemovingItemLocally (){
+      actionDict['remove'+singular+'Locally'] = (dispatch) => {
+        return (toBeRemovedItem) => {
+          dispatchAction(dispatch, prefix+'.startRemoving' + plural, [toBeRemovedItem])
+        }         
+      }
+      return obj
+    },
+
+    onRemovingItemsLocally (){
+      actionDict['remove'+plural+'Locally'] = (dispatch) => {
+        return (toBeRemovedItems) => {
+          dispatchAction(dispatch, prefix+'.startRemoving' + plural, toBeRemovedItems)
+        }         
+      }
+      return obj
+    },
+
+    onRemovingItem (asyncFunc){
+      actionDict['remove'+singular] = (dispatch) => {
+        return async (toBeRemovedItem) => {
           dispatchAction(dispatch, prefix+'.startLoading')
-          dispatchAction(dispatch, prefix+'.startDeletingItems', toBeDeletedItems)
+          dispatchAction(dispatch, prefix+'.startRemoving' + plural, [toBeRemovedItem])
           try{
-            let deletedItems = await asyncFunc(toBeDeletedItems)
-            dispatchAction(dispatch, prefix+'.finishDeletingItems', deletedItems)     
+            let removedItem = await asyncFunc(toBeRemovedItem)
+            dispatchAction(dispatch, prefix+'.finishRemoving' + plural, [removedItem])     
+          }catch (e){
+          }
+          dispatchAction(dispatch, prefix+'.stopLoading')
+        }         
+      }
+      return obj
+    },
+
+    onRemovingItems (asyncFunc){
+      actionDict['remove'+plural] = (dispatch) => {
+        return async (toBeRemovedItems) => {
+          dispatchAction(dispatch, prefix+'.startLoading')
+          dispatchAction(dispatch, prefix+'.startRemoving' + plural, toBeRemovedItems)
+          try{
+            let removedItems = await asyncFunc(toBeRemovedItems)
+            dispatchAction(dispatch, prefix+'.finishRemoving' + plural, removedItems)     
           }catch (e){
             
           }
@@ -324,6 +389,7 @@ const Reduce = function (config){
     }
 
   }
+  return obj
 }
 
 let CrudListReducerGenerator = { 
