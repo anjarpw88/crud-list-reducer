@@ -304,7 +304,7 @@ const Reduce = function (config){
     },
 
     onUpdatingItem (asyncFunc){
-      actionDict['update'+plural] = (dispatch) => {
+      actionDict['update'+singular] = (dispatch) => {
         return async (toBeUpdatedItem) => {
           dispatchAction(dispatch, prefix+'.startLoading')
           dispatchAction(dispatch, prefix+'.set' + plural, [toBeUpdatedItem])
@@ -380,7 +380,6 @@ const Reduce = function (config){
             let removedItems = await asyncFunc(toBeRemovedItems)
             dispatchAction(dispatch, prefix+'.finishRemoving' + plural, removedItems)     
           }catch (e){
-            
           }
           dispatchAction(dispatch, prefix+'.stopLoading')
         }         

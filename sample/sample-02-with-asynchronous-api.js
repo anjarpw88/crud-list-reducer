@@ -34,6 +34,14 @@ let userReducerPackage = CrudListReducerGenerator.Reduce({
     await fakeApiServer.removeUsers(users)
     return users
 })
+.onUpdatingItem( async (user) => {
+    await fakeApiServer.updateUser(user)
+    return user
+})
+.onUpdatingItems( async (users) => {
+    await fakeApiServer.updateUsers(users)
+    return users
+})
 
 .generate()
 
@@ -51,6 +59,8 @@ let {
     populateUsers,
     addUser,
     addUsers,
+    updateUser,
+    updateUsers,
     removeUser,
     removeUsers,
     
@@ -99,6 +109,7 @@ let runSample = async () => {
     await promise
     console.log('\tthen')
     console.log(userReducerPackage.getComputedValues(store.getState().users))
+
     var users = userReducerPackage.getLocalList(store.getState().users)
     
 
@@ -109,13 +120,33 @@ let runSample = async () => {
     console.log('\tthen')
     console.log(userReducerPackage.getComputedValues(store.getState().users))
 
-    promise = removeUsers([users[0],users[1]])
-    console.log('Removing Items', users[0].name, users[1].name)
+    promise = removeUsers([users[0],users[1],users[2],users[3]])
+    console.log('Removing Items', users[0].name, users[1].name, users[2].name, users[3].name)
     console.log(userReducerPackage.getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
     console.log(userReducerPackage.getComputedValues(store.getState().users))
-        
+
+    var users = userReducerPackage.getLocalList(store.getState().users)
+    users = JSON.parse(JSON.stringify(users))
+    users[0].name = 'Lucy O\'Donnel'
+    users[1].name = 'Eleanor Rigby'
+    users[2].name = 'Molly Dekker'
+    
+    promise = updateUser(users[0])
+    console.log('Updating Item', users[0].name)
+    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    await promise
+    console.log('\tthen')
+    console.log(userReducerPackage.getComputedValues(store.getState().users))
+
+    promise = updateUsers([users[2],users[1]])
+    console.log('Updating Items', users[2].name, users[1].name)
+    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    await promise
+    console.log('\tthen')
+    console.log(userReducerPackage.getComputedValues(store.getState().users))
+
 }
 
 runSample()

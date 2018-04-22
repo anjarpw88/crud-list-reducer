@@ -62,15 +62,19 @@ let wait = (timeout) => {
 }
 let nextUserId = 11
 
+let makeBrandNew = (item) => {
+    return JSON.parse(JSON.stringify(item))
+}
+
 let fakeApiServer = {
     async getUsers(){
         await wait(1000)
-        return usersInServer
+        return makeBrandNew(usersInServer)
     },    
     async getUsersByGender(sex){
         var users = usersInServer.filter((u)=>u.sex==sex)
         await wait(1000)
-        return users
+        return makeBrandNew(users)
     },
     async addUser(user) {
         nextUserId++
@@ -79,7 +83,7 @@ let fakeApiServer = {
             id:nextUserId
         })
         await wait(1000)
-        return nextUserId
+        return makeBrandNew(nextUserId)
     },
     async addUsers(users) {
         var returnedUsers = []
@@ -93,10 +97,10 @@ let fakeApiServer = {
             returnedUsers.push(user)    
         })
         await wait(1000)
-        return returnedUsers
+        return makeBrandNew(returnedUsers)
     },
     async removeUser(user) {
-        var successfullyRemovedUser = null
+        let successfullyRemovedUser = null
         usersInServer = usersInServer.filter((u) =>{
             if(u.id != user.id){
                 successfullyRemovedUser = u
@@ -105,23 +109,46 @@ let fakeApiServer = {
             return true
         })
         await wait(1000)
-        return successfullyRemovedUser
+        return makeBrandNew(successfullyRemovedUser)
         
     },
     async removeUsers(users) {
-        var successfullyRemovedUsers = []
-        ids = users.map(u=>u.id)
+        let successfullyRemovedUsers = []
+        let ids = users.map(u=>u.id)
         usersInServer = usersInServer.filter((u) =>{
             if(ids.indexOf(u.id)>=0){
-                successfullyRemovedUser.push(u)
+                successfullyRemovedUsers.push(u)
                 return false
             }
             return true
         })
         await wait(1000)
-        return successfullyRemovedUsers
-        
-    }
+        return makeBrandNew(successfullyRemovedUsers)        
+    },
+    async updateUser(user){
+        let successfullyUpdatedUser = null
+        usersInServer.map((u, index) =>{
+            if(u.id == user.id){
+                successfullyUpdatedUser = user
+                usersInServer[index] = user
+            }
+        })
+        await wait(1000)
+        return makeBrandNew(successfullyUpdatedUser)               
+    },
+    async updateUsers(users) {
+        let successfullyUpdatedUsers = []
+        let ids = users.map(u=>u.id)
+        usersInServer = usersInServer.filter((u, index) =>{
+            var index2 = ids.indexOf(u.id)
+            if(index2>=0){
+                usersInServer[index] = users[index2]
+                successfullyUpdatedUsers.push(users[index2])
+            }
+        })
+        await wait(1000)
+        return makeBrandNew(successfullyUpdatedUsers)        
+    },
     
 }
 
