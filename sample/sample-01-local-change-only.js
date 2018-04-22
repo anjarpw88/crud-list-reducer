@@ -1,5 +1,5 @@
 
-import { CrudListReducerGenerator } from '../src/crud-list-reducer'
+import { CrudListReducerGenerator, getInitialStateTemplate } from '../src/crud-list-reducer'
 
 import { StoreWrapper } from 'redux-wrapper-extended'
 
@@ -17,7 +17,7 @@ var store = new StoreWrapper(
         users: userReducerPackage.reducer
     },
     {
-        users: userReducerPackage.initialState
+        users: getInitialStateTemplate()
     })
     .getStore()
 

@@ -135,17 +135,22 @@ function finalizeWrapper(wrapper, prefix, plural, identifyingFunc) {
   })
 }
 
-const Reduce = function (config){
-  let {prefix, singular, plural} = config
 
-  var initialState = {
+let getInitialStateTemplate = () => {
+  return {
     localItemDict: {},
     syncedItemDict:{},
     toBeAddedList:[],
     isLoading: false
   }
+}
 
-  let reducerWrapper = new ReducerWrapper(initialState)
+const Reduce = function (config){
+  let {prefix, singular, plural} = config
+
+
+
+  let reducerWrapper = new ReducerWrapper(getInitialStateTemplate())
   let actionDict = {}
   
   let obj = {
@@ -162,23 +167,6 @@ const Reduce = function (config){
       obj.onRemovingItemLocally()
       obj.onRemovingItemsLocally()
       return {
-        initialState,
-        getLocalList: (state) => {
-          var list = Object.keys(state.localItemDict).map((key) => state.localItemDict[key])
-          list.concat(state.toBeAddedList)
-          return list
-        },
-        getSyncedList: (state) => {
-          return Object.keys(state.syncedItemDict).map((key) => state.syncedItemDict[key])
-        },
-        isLoading: (state) => state.isLoading,
-        getComputedValues: function (state) {
-          return {
-            localList: this.getLocalList(state),
-            syncedList: this.getSyncedList(state),
-            isLoading: this.isLoading(state),
-          }
-        },
         reducer: reducerWrapper.getReducer(),
         generateActions: (dispatch) => {
           let returnedActions = {}
@@ -240,9 +228,10 @@ const Reduce = function (config){
             let localItemDict = await asyncFunc(params)
             dispatchAction(dispatch, prefix+'.setSyncedByKeys', localItemDict)     
           }catch (e){
-            
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         } 
       }
       return obj            
@@ -258,9 +247,10 @@ const Reduce = function (config){
             dispatchAction(dispatch, prefix+'.completeAdding' + plural, [toBeAddedItem])     
             dispatchAction(dispatch, prefix+'.setSynced' + plural, [addedItem])     
           }catch (e){
-            
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         } 
       }
       return obj
@@ -276,9 +266,10 @@ const Reduce = function (config){
             dispatchAction(dispatch, prefix+'.completeAdding' + plural, toBeAddedItems)     
             dispatchAction(dispatch, prefix+'.setSynced' + plural, addedItems)     
           }catch (e){
-            
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         }         
       }
       return obj
@@ -312,9 +303,10 @@ const Reduce = function (config){
             let updatedItem = await asyncFunc(toBeUpdatedItem)
             dispatchAction(dispatch, prefix+'.setSynced' + plural, [updatedItem])     
           }catch (e){
-            
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         }         
       }
       return obj
@@ -329,9 +321,10 @@ const Reduce = function (config){
             let updatedItems = await asyncFunc(toBeUpdatedItems)
             dispatchAction(dispatch, prefix+'.setSynced' + plural, updatedItems)     
           }catch (e){
-            
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         }         
       }
       return obj
@@ -364,8 +357,10 @@ const Reduce = function (config){
             let removedItem = await asyncFunc(toBeRemovedItem)
             dispatchAction(dispatch, prefix+'.finishRemoving' + plural, [removedItem])     
           }catch (e){
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         }         
       }
       return obj
@@ -380,8 +375,10 @@ const Reduce = function (config){
             let removedItems = await asyncFunc(toBeRemovedItems)
             dispatchAction(dispatch, prefix+'.finishRemoving' + plural, removedItems)     
           }catch (e){
+            throw (e)
+          }finally{
+            dispatchAction(dispatch, prefix+'.stopLoading')
           }
-          dispatchAction(dispatch, prefix+'.stopLoading')
         }         
       }
       return obj
@@ -394,7 +391,28 @@ const Reduce = function (config){
 let CrudListReducerGenerator = { 
   Reduce
 }
+let getLocalList = (state) => {
+  var list = Object.keys(state.localItemDict).map((key) => state.localItemDict[key])
+  list.concat(state.toBeAddedList)
+  return list
+}
+let getSyncedList = (state) => {
+  return Object.keys(state.syncedItemDict).map((key) => state.syncedItemDict[key])
+}
+let isLoading = (state) => state.isLoading
+let getComputedValues = function (state) {
+  return {
+    localList: getLocalList(state),
+    syncedList: getSyncedList(state),
+    isLoading: isLoading(state),
+  }
+}
 
 export {
-  CrudListReducerGenerator
+  CrudListReducerGenerator,
+  getInitialStateTemplate,
+  getLocalList,
+  getSyncedList,
+  isLoading,
+  getComputedValues
 }

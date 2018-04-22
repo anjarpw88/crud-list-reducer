@@ -1,5 +1,5 @@
 
-import { CrudListReducerGenerator } from '../src/crud-list-reducer'
+import { CrudListReducerGenerator, getComputedValues, getInitialStateTemplate, getLocalList } from '../src/crud-list-reducer'
 
 import { StoreWrapper } from 'redux-wrapper-extended'
 
@@ -43,6 +43,26 @@ let userReducerPackage = CrudListReducerGenerator.Reduce({
     return users
 })
 
+// yes, custom action. must return key value pair of user
+.onExecutingCrudSyncedItems ('markAsDeceased', async (name) => {
+    var user = await fakeApiServer.getUserWithName(name)
+    user = await fakeApiServer.markUserAsDeceased(user.id)
+    return {
+        [user.id]: user
+    }
+})
+
+// return id with value null would imply deletion
+.onExecutingCrudSyncedItems ('removeDeceasedUsers', async (name) => {
+    var deceasedUsers = await fakeApiServer.removeDeceasedUsers()
+    var userDict = {}
+    deceasedUsers.forEach((u) => {
+        userDict[u.id] = null
+    })
+    return userDict
+})
+
+
 .generate()
 
 
@@ -51,7 +71,7 @@ var store = new StoreWrapper(
         users: userReducerPackage.reducer
     },
     {
-        users: userReducerPackage.initialState
+        users: getInitialStateTemplate()
     })
     .getStore()
 
@@ -63,6 +83,8 @@ let {
     updateUsers,
     removeUser,
     removeUsers,
+    markAsDeceased,
+    removeDeceasedUsers
     
 } = userReducerPackage.generateActions(store.dispatch)
 
@@ -70,21 +92,21 @@ let runSample = async () => {
 
     let promise = null
     promise = populateUsers('Female')
-    console.log('Populating Items')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log('Populating Users')
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
     promise = addUser({
         name: 'Amy',
         sex: 'Female'
     })
     console.log('Adding Item', 'Amy')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
     promise = addUsers([
         {
@@ -96,38 +118,38 @@ let runSample = async () => {
             sex: 'Male'
         }
     ])
-    console.log('Adding Items', 'Alicia','User')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log('Adding Users', 'Alicia','User')
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
     
 
     promise = populateUsers()
-    console.log('Populating Items')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log('Populating Users')
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
-    var users = userReducerPackage.getLocalList(store.getState().users)
+    var users = getLocalList(store.getState().users)
     
 
     promise = removeUser(users[0])
     console.log('Removing Item', users[0].name)
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
     promise = removeUsers([users[0],users[1],users[2],users[3]])
-    console.log('Removing Items', users[0].name, users[1].name, users[2].name, users[3].name)
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log('Removing Users', users[0].name, users[1].name, users[2].name, users[3].name)
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
-    var users = userReducerPackage.getLocalList(store.getState().users)
+    var users = getLocalList(store.getState().users)
     users = JSON.parse(JSON.stringify(users))
     users[0].name = 'Lucy O\'Donnel'
     users[1].name = 'Eleanor Rigby'
@@ -135,18 +157,35 @@ let runSample = async () => {
     
     promise = updateUser(users[0])
     console.log('Updating Item', users[0].name)
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
     promise = updateUsers([users[2],users[1]])
-    console.log('Updating Items', users[2].name, users[1].name)
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log('Updating Users', users[2].name, users[1].name)
+    console.log(getComputedValues(store.getState().users))
     await promise
     console.log('\tthen')
-    console.log(userReducerPackage.getComputedValues(store.getState().users))
+    console.log(getComputedValues(store.getState().users))
 
+    promise = markAsDeceased('Amy')
+    console.log('Mark as deceased', 'Amy')
+    console.log(getComputedValues(store.getState().users))
+    await promise
+    console.log('\tthen')
+    console.log(getComputedValues(store.getState().users))
+
+
+    await markAsDeceased('Eleanor Rigby')
+
+    promise = removeDeceasedUsers()
+    console.log('remove deceased users')
+    console.log(getComputedValues(store.getState().users))
+    await promise
+    console.log('\tthen')
+    console.log(getComputedValues(store.getState().users))
+    
 }
 
 runSample()
