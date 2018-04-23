@@ -1,6 +1,5 @@
 
-import { CrudListReducerGenerator, getInitialStateTemplate } from '../src/crud-list-reducer'
-
+import { CrudListReducerGenerator, getInitialStateTemplate } from '../lib/crud-list-reducer'
 import { StoreWrapper } from 'redux-wrapper-extended'
 
 let userReducerPackage = CrudListReducerGenerator.Reduce({

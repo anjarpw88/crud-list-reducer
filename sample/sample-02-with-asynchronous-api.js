@@ -1,6 +1,6 @@
 
-import { CrudListReducerGenerator, getComputedValues, getInitialStateTemplate, getLocalList } from '../src/crud-list-reducer'
-
+import { CrudListReducerGenerator, getComputedValues, getInitialStateTemplate, getLocalList } from '../lib/crud-list-reducer'
+import 'babel-polyfill'
 import { StoreWrapper } from 'redux-wrapper-extended'
 
 import fakeApiServer from './fakeApiServer'

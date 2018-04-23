@@ -14,7 +14,8 @@
   "author": "Anjar Wicaksono",
   "license": "MIT",
   "dependencies": {
-    "redux-wrapper-extended": "^1.0.2"
+    "redux-wrapper-extended": "^1.0.2",
+    "regenerator-runtime": "^0.11.1"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
