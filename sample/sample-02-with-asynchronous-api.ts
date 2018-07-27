@@ -1,9 +1,8 @@
 
-import { CrudListReducerGenerator, getComputedValues, ItemDict, getInitialStateTemplate, getLocalList, MultipleItemAsyncFunc, SingleOrNull, ManyOrNull, PromiseOfSingleOrNull, PromiseOfManyOrNull, ItemContainer } from '../src'
+import { CrudListReducerGenerator, getComputedValues, ItemDict, getInitialStateTemplate, getLocalList, MultipleItemAsyncFunc, SingleOrNull, SingleItemAsyncFunc, ManyOrNull, PromiseOfSingleOrNull, PromiseOfManyOrNull, ItemContainer } from '../src'
 import { StoreWrapper } from 'redux-wrapper-extended'
 import { User } from './user'
 import fakeApiServer from './fakeApiServer'
-import { SingleItemAsyncFunc } from '../dist/src';
 
 let userReducerPackage = CrudListReducerGenerator.reduce<User>({
     prefix: 'user',
