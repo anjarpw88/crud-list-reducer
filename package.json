@@ -1,10 +1,10 @@
 {
   "name": "crud-list-reducer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Managing API conn with list",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "typings": "dist/index.d.ts",  
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "typings": "dist/src/index.d.ts",  
   "scripts": {
     "test": "tsc; node dist/sample/index.js",
     "build": "tsc"

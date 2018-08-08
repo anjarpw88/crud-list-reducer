@@ -1,5 +1,5 @@
 
-import { CrudListReducerGenerator, getInitialStateTemplate, SingleItemFunc, MultipleItemFunc } from '../src'
+import { CrudListReducerGenerator, getInitialStateTemplate, SingleItemFunc, MultipleItemsFunc } from '../src'
 import { StoreWrapper } from 'redux-wrapper-extended'
 import { User } from './user'
 
@@ -31,15 +31,15 @@ let rawActions = userReducerPackage.generateActions(store.dispatch)
 interface UserActions {
 }
 
-let populateUsersLocally = rawActions.populateUsersLocally as MultipleItemFunc<User>
+let populateUsersLocally = rawActions.populateUsersLocally as MultipleItemsFunc<User>
 let addUserLocally = rawActions.addUserLocally as SingleItemFunc<User>
-let addUsersLocally = rawActions.addUsersLocally as MultipleItemFunc<User>
+let addUsersLocally = rawActions.addUsersLocally as MultipleItemsFunc<User>
 let modifyUserLocally = rawActions.modifyUserLocally as SingleItemFunc<User>
-let modifyUsersLocally = rawActions.modifyUsersLocally as MultipleItemFunc<User>
+let modifyUsersLocally = rawActions.modifyUsersLocally as MultipleItemsFunc<User>
 let removeUserLocally = rawActions.removeUserLocally as SingleItemFunc<User>
-let removeUsersLocally = rawActions.removeUsersLocally as MultipleItemFunc<User>
+let removeUsersLocally = rawActions.removeUsersLocally as MultipleItemsFunc<User>
 let setUserLocally = rawActions.setUserLocally as SingleItemFunc<User>
-let setUsersLocally = rawActions.setUsersLocally as MultipleItemFunc<User>
+let setUsersLocally = rawActions.setUsersLocally as MultipleItemsFunc<User>
 
 
 

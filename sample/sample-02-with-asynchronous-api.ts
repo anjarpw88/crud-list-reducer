@@ -1,5 +1,5 @@
 
-import { CrudListReducerGenerator, getComputedValues, ItemDict, getInitialStateTemplate, getLocalList, MultipleItemAsyncFunc, SingleOrNull, SingleItemAsyncFunc, ManyOrNull, PromiseOfSingleOrNull, PromiseOfManyOrNull, ItemContainer } from '../src'
+import { CrudListReducerGenerator, getComputedValues, ItemDict, getInitialStateTemplate, getLocalList, MultipleItemsAsyncFunc, SingleItemAsyncFunc, PromiseOfMultiple, ItemContainer } from '../src'
 import { StoreWrapper } from 'redux-wrapper-extended'
 import { User } from './user'
 import fakeApiServer from './fakeApiServer'
@@ -30,32 +30,32 @@ let userReducerPackage = CrudListReducerGenerator.reduce<User>({
         }
     })
     .onAddingItems(async (users: User[]) => await fakeApiServer.addUsers(users))
-    .onRemovingItem(async (user: User): Promise<SingleOrNull<User>> => {
+    .onRemovingItem(async (user: User): Promise<User> => {
         await fakeApiServer.removeUser(user)
         return user
     })
-    .onRemovingItems(async (users: User[]): Promise<ManyOrNull<User>> => {
+    .onRemovingItems(async (users: User[]): Promise<User[]> => {
         await fakeApiServer.removeUsers(users)
         return users
     })
-    .onUpdatingItem(async (user: User): Promise<SingleOrNull<User>> => {
+    .onUpdatingItem(async (user: User): Promise<User> => {
         await fakeApiServer.updateUser(user)
         return user
     })
-    .onUpdatingItems(async (users: User[]): Promise<ManyOrNull<User>> => {
+    .onUpdatingItems(async (users: User[]): Promise<User[]> => {
         await fakeApiServer.updateUsers(users)
-        return users
+        return users;
     })
 
     // yes, custom action. must return key value pair of user
-    .onExecutingCrudSyncedItems('markAsDeceased', async (name: string): Promise<ItemDict<User> | null> => {
-        var user: SingleOrNull<User> = await fakeApiServer.getUserWithName(name) as User
+    .onExecutingCrudSyncedItems('markAsDeceased', async (name: string): Promise<ItemDict<User>> => {
+        var user: User | null = await fakeApiServer.getUserWithName(name)
         if (!user || !user.id){
-            return null
+            return {}
         }
         user = await fakeApiServer.markUserAsDeceased(user.id)
         if (!user || !user.id){
-            return null
+            return {}
         }       
         let userId = (user.id as number).toString()
         return {
@@ -90,13 +90,13 @@ var store = new StoreWrapper(
 let rawActions = userReducerPackage.generateActions(store.dispatch)
 
 
-let populateUsers = rawActions.populateUsers as (sex?: string) => PromiseOfManyOrNull<User>
+let populateUsers = rawActions.populateUsers as (sex?: string) => PromiseOfMultiple<User>
 let addUser = rawActions.addUser as SingleItemAsyncFunc<User>
-let addUsers = rawActions.addUsers as MultipleItemAsyncFunc<User>
+let addUsers = rawActions.addUsers as MultipleItemsAsyncFunc<User>
 let updateUser = rawActions.updateUser as SingleItemAsyncFunc<User>
-let updateUsers = rawActions.updateUsers as MultipleItemAsyncFunc<User>
+let updateUsers = rawActions.updateUsers as MultipleItemsAsyncFunc<User>
 let removeUser = rawActions.removeUser as SingleItemAsyncFunc<User>
-let removeUsers = rawActions.removeUsers as MultipleItemAsyncFunc<User>
+let removeUsers = rawActions.removeUsers as MultipleItemsAsyncFunc<User>
 let markAsDeceased = rawActions.markAsDeceased as (name: string) => Promise<ItemDict<User>>
 let removeDeceasedUsers = rawActions.removeDeceasedUsers as () => Promise<ItemDict<User>>
 

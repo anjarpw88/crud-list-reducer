@@ -2,9 +2,8 @@ import { ReducerWrapper, dispatchAction } from 'redux-wrapper-extended';
 import { Reducer, Dispatch, AnyAction } from 'redux'
 
 export interface ItemDict<T> {
-  [key: string]: SingleOrNull<T>
+  [key: string]: T | null
 }
-
 export interface ItemContainer<T> {
   localItemDict: ItemDict<T>,
   syncedItemDict: ItemDict<T>,
@@ -28,14 +27,12 @@ export interface DispatchFuncDict {
 export interface FuncDict {
   [key: string]: (...args: any[]) => any
 }
-export type SingleOrNull<T> = T | null
-export type ManyOrNull<T> = T[] | null
-export type PromiseOfSingleOrNull<T> = Promise<SingleOrNull<T>> | null
-export type PromiseOfManyOrNull<T> = Promise<ManyOrNull<T>> | null
-export type SingleItemFunc<T> = (input: T) => SingleOrNull<T>
-export type MultipleItemFunc<T> = (input: T[]) => ManyOrNull<T>
-export type SingleItemAsyncFunc<T> = (input: T) => PromiseOfSingleOrNull<T>
-export type MultipleItemAsyncFunc<T> = (input: T[]) => PromiseOfManyOrNull<T>
+export type PromiseOfSingle<T> = Promise<T>
+export type PromiseOfMultiple<T> = Promise<T[]>
+export type SingleItemFunc<T> = (input: T) => T
+export type MultipleItemsFunc<T> = (input: T[]) => T[]
+export type SingleItemAsyncFunc<T> = (input: T) => PromiseOfSingle<T>
+export type MultipleItemsAsyncFunc<T> = (input: T[]) => PromiseOfMultiple<T>
 
 export interface ReducerPackage<T> {
   reducer: Reducer<T>
@@ -200,18 +197,18 @@ class CrudListReducerGenerator<T> {
   dispatchFuncDict: DispatchFuncDict
 
   constructor(config: CrudReducerConfig) {
-    this.config = config
-    this.reducerWrapper = new ReducerWrapper(getInitialStateTemplate())
-    this.dispatchFuncDict = {}
+    this.config = config;
+    this.reducerWrapper = new ReducerWrapper(getInitialStateTemplate());
+    this.dispatchFuncDict = {};
   }
 
   identifiedBy(identifyingFunc: (item: T) => string): CrudListReducerGenerator<T> {
-    finalizeWrapper(this.reducerWrapper, this.config, identifyingFunc)
+    finalizeWrapper(this.reducerWrapper, this.config, identifyingFunc);
     return this
   }
 
   static reduce<T>(config: CrudReducerConfig): CrudListReducerGenerator<T> {
-    return new CrudListReducerGenerator(config)
+    return new CrudListReducerGenerator(config);
   }
 
   generate(): ReducerPackage<ItemContainer<T>> {
@@ -225,11 +222,11 @@ class CrudListReducerGenerator<T> {
     return {
       reducer: this.reducerWrapper.getReducer(),
       generateActions: (dispatch: Dispatch<AnyAction>) => {
-        let returnedActions: FuncDict = {}
+        let returnedActions: FuncDict = {};
         Object.keys(this.dispatchFuncDict).forEach((actionName) => {
-          returnedActions[actionName] = this.dispatchFuncDict[actionName](dispatch)
+          returnedActions[actionName] = this.dispatchFuncDict[actionName](dispatch);
         })
-        return returnedActions
+        return returnedActions;
       }
     }
   }
@@ -238,259 +235,250 @@ class CrudListReducerGenerator<T> {
   onSettingItemLocally(): CrudListReducerGenerator<T> {
     this.dispatchFuncDict['set' + this.config.singular + 'Locally'] = (dispatch: Dispatch<AnyAction>): SingleItemFunc<T> => {
       return (item: T): T => {
-        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, [item])
-        return item
+        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, [item]);
+        return item;
       }
     }
-    return this
+    return this;
   }
 
   onSettingItemsLocally(): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['set' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemFunc<T> => {
+    this.dispatchFuncDict['set' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemsFunc<T> => {
       return (items: T[]): T[] => {
-        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, items)
-        return items
+        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, items);
+        return items;
       }
     }
-    return this
+    return this;
   }
 
   onPopulatingItemsLocally(): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['populate' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemFunc<T> => {
+    this.dispatchFuncDict['populate' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemsFunc<T> => {
       return (items: T[]): T[] => {
-        dispatchAction(dispatch, this.config.prefix + '.clear')
-        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, items)
-        return items
+        dispatchAction(dispatch, this.config.prefix + '.clear');
+        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, items);
+        return items;
       }
     }
-    return this
+    return this;
   }
 
-  onPopulatingSyncedItems(asyncFunc: (...args: any[]) => Promise<ManyOrNull<T>>): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['populate' + this.config.plural] = (dispatch: Dispatch<AnyAction>): (...args: any[]) => PromiseOfManyOrNull<T> => {
-      return async (...params: any[]): Promise<ManyOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        let items: ManyOrNull<T> = null
+  onPopulatingSyncedItems(asyncFunc: (...args: any[]) => Promise<T[]>): CrudListReducerGenerator<T> {
+    this.dispatchFuncDict['populate' + this.config.plural] = (dispatch: Dispatch<AnyAction>): (...args: any[]) => PromiseOfMultiple<T> => {
+      return async (...params: any[]): Promise<T[]> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
         try {
-          items = await asyncFunc.apply(null, params)
-          dispatchAction(dispatch, this.config.prefix + '.clear')
-          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, items)
+          let items: T[] = await asyncFunc.apply(null, params);
+          dispatchAction(dispatch, this.config.prefix + '.clear');
+          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, items);
+          return items;
         } catch (e) {
-          throw e
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return items
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
-
       }
     }
-    return this
+    return this;
   }
 
   onExecutingCrudSyncedItems(methodName: string, asyncFunc: (...args: any[]) => Promise<any>): CrudListReducerGenerator<T> {
     this.dispatchFuncDict[methodName] = (dispatch: Dispatch<AnyAction>): (...args: any[]) => Promise<ItemDict<T>> => {
       return async (...params: any[]): Promise<ItemDict<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        let localItemDict: ItemDict<T> = {}
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
         try {
-          localItemDict = await asyncFunc.apply(null, params)
-          dispatchAction(dispatch, this.config.prefix + '.setSyncedByKeys', localItemDict)
+          let localItemDict: ItemDict<T> = {} = await asyncFunc.apply(null, params);
+          dispatchAction(dispatch, this.config.prefix + '.setSyncedByKeys', localItemDict);
+          return localItemDict;
         } catch (e) {
-          throw (e)
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return localItemDict
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
   onAddingItem(asyncFunc: SingleItemAsyncFunc<T>): CrudListReducerGenerator<T> {
     this.dispatchFuncDict['add' + this.config.singular] = (dispatch: Dispatch<AnyAction>): SingleItemAsyncFunc<T> => {
-      return async (toBeAddedItem: T): Promise<SingleOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        dispatchAction(dispatch, this.config.prefix + '.startAdding' + this.config.plural, [toBeAddedItem])
-        let addedItem: SingleOrNull<T> = null
+      return async (toBeAddedItem: T): Promise<T> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
+        dispatchAction(dispatch, this.config.prefix + '.startAdding' + this.config.plural, [toBeAddedItem]);
         try {
-          addedItem = await asyncFunc(toBeAddedItem)
-          dispatchAction(dispatch, this.config.prefix + '.completeAdding' + this.config.plural, [toBeAddedItem])
-          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, [addedItem])
+          let addedItem: T = await asyncFunc(toBeAddedItem);
+          dispatchAction(dispatch, this.config.prefix + '.completeAdding' + this.config.plural, [toBeAddedItem]);
+          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, [addedItem]);
+          return addedItem;
         } catch (e) {
-          throw (e)
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return addedItem
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
-  onAddingItems(asyncFunc: MultipleItemAsyncFunc<T>): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['add' + this.config.plural] = (dispatch: Dispatch<AnyAction>): MultipleItemAsyncFunc<T> => {
-      return async (toBeAddedItems: T[]): Promise<ManyOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        dispatchAction(dispatch, this.config.prefix + '.startAdding' + this.config.plural, toBeAddedItems)
-        let addedItems: ManyOrNull<T> = null
+  onAddingItems(asyncFunc: MultipleItemsAsyncFunc<T>): CrudListReducerGenerator<T> {
+    this.dispatchFuncDict['add' + this.config.plural] = (dispatch: Dispatch<AnyAction>): MultipleItemsAsyncFunc<T> => {
+      return async (toBeAddedItems: T[]): Promise<T[]> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
+        dispatchAction(dispatch, this.config.prefix + '.startAdding' + this.config.plural, toBeAddedItems);
         try {
-          addedItems = await asyncFunc(toBeAddedItems)
-          dispatchAction(dispatch, this.config.prefix + '.completeAdding' + this.config.plural, toBeAddedItems)
-          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, addedItems)
+          let addedItems: T[] = await asyncFunc(toBeAddedItems);
+          dispatchAction(dispatch, this.config.prefix + '.completeAdding' + this.config.plural, toBeAddedItems);
+          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, addedItems);
+          return addedItems;
         } catch (e) {
-          throw (e)
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return addedItems
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
   onModifyingItemLocally(): CrudListReducerGenerator<T> {
     this.dispatchFuncDict['modify' + this.config.singular + 'Locally'] = (dispatch: Dispatch<AnyAction>): SingleItemFunc<T> => {
       return (item: T): T => {
-        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, [item])
-        return item
+        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, [item]);
+        return item;
       }
     }
-    return this
+    return this;
   }
 
   onModifyingItemsLocally(): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['modify' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemFunc<T> => {
+    this.dispatchFuncDict['modify' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemsFunc<T> => {
       return (items: T[]): T[] => {
         dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, items)
         return items
       }
     }
-    return this
+    return this;
   }
 
   onUpdatingItem(asyncFunc: SingleItemAsyncFunc<T>): CrudListReducerGenerator<T> {
     this.dispatchFuncDict['update' + this.config.singular] = (dispatch: Dispatch<AnyAction>): SingleItemAsyncFunc<T> => {
-      return async (toBeUpdatedItem: T): Promise<SingleOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, [toBeUpdatedItem])
-        let updatedItem: SingleOrNull<T> = null
+      return async (toBeUpdatedItem: T): Promise<T> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
+        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, [toBeUpdatedItem]);
         try {
-          updatedItem = await asyncFunc(toBeUpdatedItem)
-          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, [updatedItem])
+          let updatedItem: T = await asyncFunc(toBeUpdatedItem);
+          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, [updatedItem]);
+          return updatedItem;
         } catch (e) {
-          throw (e)
+          throw e
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return updatedItem
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
-  onUpdatingItems(asyncFunc: MultipleItemAsyncFunc<T>): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['update' + this.config.plural] = (dispatch: Dispatch<AnyAction>): MultipleItemAsyncFunc<T> => {
-      return async (toBeUpdatedItems: T[]): Promise<ManyOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, toBeUpdatedItems)
-        let updatedItems: ManyOrNull<T> = null
+  onUpdatingItems(asyncFunc: MultipleItemsAsyncFunc<T>): CrudListReducerGenerator<T> {
+    this.dispatchFuncDict['update' + this.config.plural] = (dispatch: Dispatch<AnyAction>): MultipleItemsAsyncFunc<T> => {
+      return async (toBeUpdatedItems: T[]): Promise<T[]> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
+        dispatchAction(dispatch, this.config.prefix + '.set' + this.config.plural, toBeUpdatedItems);
         try {
-          updatedItems = await asyncFunc(toBeUpdatedItems)
-          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, updatedItems)
+          let updatedItems: T[] = await asyncFunc(toBeUpdatedItems);
+          dispatchAction(dispatch, this.config.prefix + '.setSynced' + this.config.plural, updatedItems);
+          return updatedItems;
         } catch (e) {
-          throw (e)
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return updatedItems
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
   onRemovingItemLocally(): CrudListReducerGenerator<T> {
     this.dispatchFuncDict['remove' + this.config.singular + 'Locally'] = (dispatch: Dispatch<AnyAction>): SingleItemFunc<T> => {
       return (toBeRemovedItem: T): T => {
-        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, [toBeRemovedItem])
-        return toBeRemovedItem
+        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, [toBeRemovedItem]);
+        return toBeRemovedItem;
       }
     }
-    return this
+    return this;
   }
 
   onRemovingItemsLocally(): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['remove' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemFunc<T> => {
+    this.dispatchFuncDict['remove' + this.config.plural + 'Locally'] = (dispatch: Dispatch<AnyAction>): MultipleItemsFunc<T> => {
       return (toBeRemovedItems: T[]): T[] => {
-        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, toBeRemovedItems)
-        return toBeRemovedItems
+        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, toBeRemovedItems);
+        return toBeRemovedItems;
       }
     }
-    return this
+    return this;
   }
 
   onRemovingItem(asyncFunc: SingleItemAsyncFunc<T>): CrudListReducerGenerator<T> {
     this.dispatchFuncDict['remove' + this.config.singular] = (dispatch: Dispatch<AnyAction>): SingleItemAsyncFunc<T> => {
-      return async (toBeRemovedItem: T): Promise<SingleOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, [toBeRemovedItem])
-        let removedItem: SingleOrNull<T> = null
+      return async (toBeRemovedItem: T): Promise<T> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
+        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, [toBeRemovedItem]);
         try {
-          removedItem = await asyncFunc(toBeRemovedItem)
-          dispatchAction(dispatch, this.config.prefix + '.finishRemoving' + this.config.plural, [removedItem])
+          let removedItem: T = await asyncFunc(toBeRemovedItem);
+          dispatchAction(dispatch, this.config.prefix + '.finishRemoving' + this.config.plural, [removedItem]);
+          return removedItem;
         } catch (e) {
-          throw (e)
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return removedItem
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
-  onRemovingItems(asyncFunc: MultipleItemAsyncFunc<T>): CrudListReducerGenerator<T> {
-    this.dispatchFuncDict['remove' + this.config.plural] = (dispatch: Dispatch<AnyAction>): MultipleItemAsyncFunc<T> => {
-      return async (toBeRemovedItems: T[]): Promise<ManyOrNull<T>> => {
-        dispatchAction(dispatch, this.config.prefix + '.startLoading')
-        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, toBeRemovedItems)
-        let removedItems: ManyOrNull<T> = null
+  onRemovingItems(asyncFunc: MultipleItemsAsyncFunc<T>): CrudListReducerGenerator<T> {
+    this.dispatchFuncDict['remove' + this.config.plural] = (dispatch: Dispatch<AnyAction>): MultipleItemsAsyncFunc<T> => {
+      return async (toBeRemovedItems: T[]): Promise<T[]> => {
+        dispatchAction(dispatch, this.config.prefix + '.startLoading');
+        dispatchAction(dispatch, this.config.prefix + '.startRemoving' + this.config.plural, toBeRemovedItems);
         try {
-          removedItems = await asyncFunc(toBeRemovedItems)
-          dispatchAction(dispatch, this.config.prefix + '.finishRemoving' + this.config.plural, removedItems)
+          let removedItems: T[] = await asyncFunc(toBeRemovedItems);
+          dispatchAction(dispatch, this.config.prefix + '.finishRemoving' + this.config.plural, removedItems);
+          return removedItems;
         } catch (e) {
-          throw (e)
+          throw e;
         } finally {
-          dispatchAction(dispatch, this.config.prefix + '.stopLoading')
-          return removedItems
+          dispatchAction(dispatch, this.config.prefix + '.stopLoading');
         }
       }
     }
-    return this
+    return this;
   }
 
 }
 
 
-let getLocalList = <T>(state: ItemContainer<T>): T[] => {
+const getLocalList = <T>(state: ItemContainer<T>): T[] => {
   var list = Object.keys(state.localItemDict)
     .filter(u => u != null)
     .map((key) => state.localItemDict[key] as T)
-  list.concat(state.toBeAddedList)
-  return list
-}
-let getSyncedList = <T>(state: ItemContainer<T>): T[] => {
+  list.concat(state.toBeAddedList);
+  return list;
+};
+const getSyncedList = <T>(state: ItemContainer<T>): T[] => {
   return Object.keys(state.syncedItemDict)
     .filter(u => u != null)
     .map((key) => state.syncedItemDict[key] as T)
-}
-let isLoading = <T>(state: ItemContainer<T>) => state.isLoading
-let getComputedValues = function <T>(state: ItemContainer<T>): ComputedValues<T> {
+};
+const isLoading = <T>(state: ItemContainer<T>) => state.isLoading;
+const getComputedValues = function <T>(state: ItemContainer<T>): ComputedValues<T> {
   return {
     localList: getLocalList(state),
     syncedList: getSyncedList(state),
     isLoading: isLoading(state),
   }
-}
+};
 
 export {
   CrudListReducerGenerator,

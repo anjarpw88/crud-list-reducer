@@ -1,5 +1,4 @@
 import { User } from './user'
-import { SingleOrNull, ManyOrNull } from '../src';
 var usersInServer: User[] = [
     {
         id: 1,
@@ -76,7 +75,7 @@ let fakeApiServer = {
         await wait(50)
         return makeBrandNewUsers(usersInServer)
     },
-    async getUserWithName(name: string) {
+    async getUserWithName(name: string): Promise<User | null> {
         var user = usersInServer.filter((u: User) => u.name == name)[0]
         await wait(50)
         if (user) {
@@ -131,7 +130,7 @@ let fakeApiServer = {
         return makeBrandNewUsers(returnedUsers)
     },
     async removeUser(user:User) {
-        let successfullyRemovedUser: SingleOrNull<User> = null
+        let successfullyRemovedUser: User | null = null
         usersInServer = usersInServer.filter((u) => {
             if (u.id == user.id) {
                 successfullyRemovedUser = u
@@ -161,7 +160,7 @@ let fakeApiServer = {
         return makeBrandNewUsers(successfullyRemovedUsers)
     },
     async updateUser(user: User) {
-        let successfullyUpdatedUser: SingleOrNull<User> = null
+        let successfullyUpdatedUser: User | null = null
         usersInServer.map((u, index) => {
             if (u.id == user.id) {
                 successfullyUpdatedUser = user
@@ -172,7 +171,7 @@ let fakeApiServer = {
         if (successfullyUpdatedUser) {
             return makeBrandNewUser(successfullyUpdatedUser as User)
         }
-        return null
+        return []
     },
     async updateUsers(users: User[]) {
         let successfullyUpdatedUsers: User[] = []
