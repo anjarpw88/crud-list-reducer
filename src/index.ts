@@ -1,9 +1,8 @@
 import { ReducerWrapper, dispatchAction } from 'redux-wrapper-extended';
 import { Reducer, Dispatch, AnyAction } from 'redux'
 
-export interface ItemDict<T> {
-  [key: string]: T | null
-}
+export type ItemDict<T> = Record<string, T>
+
 export interface ItemContainer<T> {
   localItemDict: ItemDict<T>,
   syncedItemDict: ItemDict<T>,
@@ -24,9 +23,8 @@ export interface DispatchFuncDict {
   [key: string]: DispatchFunc
 }
 
-export interface FuncDict {
-  [key: string]: (...args: any[]) => any
-}
+export type FuncDict = Record<string, AnyFunc>
+
 export type PromiseOfSingle<T> = Promise<T>
 export type PromiseOfMultiple<T> = Promise<T[]>
 export type SingleItemFunc<T> = (input: T) => T
@@ -219,8 +217,9 @@ class CrudListReducerGenerator<T> {
     this.onModifyingItemsLocally()
     this.onRemovingItemLocally()
     this.onRemovingItemsLocally()
+    const reducer = this.reducerWrapper.getReducer() as Reducer<ItemContainer<T>>
     return {
-      reducer: this.reducerWrapper.getReducer(),
+      reducer,
       generateActions: (dispatch: Dispatch<AnyAction>) => {
         let returnedActions: FuncDict = {};
         Object.keys(this.dispatchFuncDict).forEach((actionName) => {
